@@ -123,13 +123,12 @@ df['occupancy_rate'] = df['numBikesAvailable'] / (df['numBikesAvailable'] + df['
 ## Folder Structure
 
 ```
-├── Vélib'_Métropole.ipynb      # main notebook
+├── Vélib'_Métropole.ipynb    
 ├── results/
 │   ├── bike_dock_hist.png
 │   ├── occupancy_heatmap.png
 │   ├── top10_bikes.png
 ├── README.md
-└── requirements.txt
 ```
 
 ---
