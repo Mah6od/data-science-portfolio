@@ -1,137 +1,152 @@
-# 🧠 Developer Seniority Prediction (XGBoost + BorderlineSMOTE Pipeline)
+# Developer Seniority Prediction (XGBoost)
 
-## 📘 Overview
-This project aims to predict a developer’s **seniority level** (`Junior`, `Mid-level`, `Senior`) based on their professional background and job-related features.  
-The dataset (`developers.csv`) includes columns such as job titles, experience, salary, company details, and employment type.
+## Overview
+This project predicts a developer’s **seniority level** (`Junior`, `Mid-level`, `Senior`) from job-related features (title, experience, salary, company size, province, …).  
 
-We use an **XGBoost Classifier** within a hybrid pipeline that handles:
-- feature extraction from job titles,
-- numerical and categorical preprocessing,
-- imbalanced data correction using **BorderlineSMOTE**, and
-- hyperparameter optimization using **RandomizedSearchCV**.
+The end-to-end pipeline:
+
+1. **Feature extraction** from job titles (seniority, specialty, binary flags, length metrics)  
+2. **Preprocessing** – imputation, scaling, one-hot encoding, log-transform of salary  
+3. **Class imbalance** – **BorderlineSMOTE** (capped at 60 % of the majority class)  
+4. **Model** – **XGBoostClassifier** (`multi:softprob`) tuned with **RandomizedSearchCV**  
+5. **Evaluation** – accuracy 0.992, macro-F1 0.988  
 
 ---
 
-## ⚙️ Model Pipeline
-The full ML pipeline includes the following stages:
+## Model Pipeline (summary)
 
-### 1️⃣ Feature Engineering
-**From Title → Extract Seniority & Specialty**
-- Custom text parsers map each job title to a *Seniority* and *Specialty*.
-- Helper functions extract text-based features such as:
-  - `has_lead`, `has_manager_word`, `has_senior_word`, `has_junior_word`, `has_architect`
-  - `title_len`, `title_word_count`
+| Stage | Technique |
+|-------|-----------|
+| Title → Seniority & Specialty | Custom regex parsers |
+| Binary title flags | `has_lead`, `has_manager_word`, … |
+| Numerical | `SimpleImputer(median) → StandardScaler` |
+| Categorical | `SimpleImputer(constant) → OneHotEncoder` |
+| Imbalance | `BorderlineSMOTE` |
+| Classifier | `XGBClassifier` (best hyper-params below) |
+| Tuning | `RandomizedSearchCV` + `StratifiedKFold` |
 
-**Example:**
-Title = "Senior Back-End Developer"
-→ Seniority = "Senior"
-→ Specialty = "Back-End"
-→ has_senior_word = 1
-→ title_len = 24
-→ title_word_count = 3
+**Best hyper-parameters**
 
-
-### 2️⃣ Preprocessing
-Features are separated into **numerical** and **categorical** columns:
-
-| Step | Transformation | Technique |
-|------|----------------|-----------|
-| Missing values | Imputation | SimpleImputer (median or constant) |
-| Numerical scaling | Normalization | StandardScaler |
-| Categorical encoding | One-hot encoding | OneHotEncoder |
-| Log-transform target | Salary normalization | np.log1p(AvgSalary) |
-
-Transformations are combined using a `ColumnTransformer` inside a scikit-learn pipeline.
-
-### 3️⃣ Handling Imbalanced Classes
-- Minority classes (e.g., Junior developers) are oversampled using **BorderlineSMOTE**.
-- Custom sampling strategy avoids overfitting (max 60% of majority class size).
-
-### 4️⃣ Model Training
-- **XGBoostClassifier** with `multi:softprob` objective for multiclass classification.
-- **RandomizedSearchCV** with `StratifiedKFold` for hyperparameter tuning.
-
-**Best parameters achieved:**
+```json
 {
-'clf__n_estimators': 297,
-'clf__max_depth': 5,
-'clf__learning_rate': 0.1158,
-'clf__subsample': 0.6888,
-'clf__colsample_bytree': 0.5002,
-'clf__reg_alpha': 0.5107,
-'clf__reg_lambda': 0.8348
+  "clf__n_estimators": 297,
+  "clf__max_depth": 5,
+  "clf__learning_rate": 0.1158,
+  "clf__subsample": 0.6888,
+  "clf__colsample_bytree": 0.5002,
+  "clf__reg_alpha": 0.5107,
+  "clf__reg_lambda": 0.8348
 }
+```
 
+---
 
-### 5️⃣ Evaluation
-Performance on the test set:
+## Evaluation on the test set
 
-| Metric | Score |
+| Metric | Value |
 |--------|-------|
-| Accuracy | 0.9921 |
-| F1 (macro avg) | 0.9876 |
-| F1 (weighted avg) | 0.9921 |
+| **Accuracy** | **0.9921** |
+| **F1 (macro)** | **0.9876** |
+| **F1 (weighted)** | **0.9921** |
 
-**Confusion Matrix:**
+### Confusion Matrix
 
 | True \ Pred | Junior | Mid-level | Senior |
 |-------------|--------|-----------|--------|
-| Junior      | 91     | 0         | 0      |
-| Mid-level   | 3      | 557       | 0      |
-| Senior      | 0      | 3         | 106    |
-
-### 6️⃣ Feature Importance (Top 10)
-Top predictive features from the preprocessed pipeline:
-
-| Feature Index | Importance |
-|---------------|------------|
-| 68            | 0.1474     |
-| 8             | 0.0710     |
-| 7             | 0.0610     |
-| 40            | 0.0606     |
-| 98            | 0.0580     |
-| 93            | 0.0542     |
-| 3             | 0.0506     |
-| 53            | 0.0470     |
-| 54            | 0.0377     |
-| 45            | 0.0334     |
-
-> **Note:** One-hot encoding expands categorical features, so indices correspond to the transformed feature order.
+| **Junior**   | **91** | 0 | 0 |
+| **Mid-level**| 3 | **557** | 0 |
+| **Senior**   | 0 | 3 | **106** |
 
 ---
 
-## 🧩 Prediction Example
-The trained pipeline can predict a developer’s seniority based on new data.
+## Feature Importance (Top 10)
 
-**Example Output:**
-Junior
+| Feature Index (after OHE) | Importance |
+|---------------------------|------------|
+| 68 | 0.1474 |
+| 8  | 0.0710 |
+| 7  | 0.0610 |
+| 40 | 0.0606 |
+| 98 | 0.0580 |
+| 93 | 0.0542 |
+| 3  | 0.0506 |
+| 53 | 0.0470 |
+| 54 | 0.0377 |
+| 45 | 0.0334 |
 
-
----
-
-## 📊 Visualizations
-- **Precision, Recall, F1-score per Class** bar chart
-- **Confusion Matrix** heatmap
-
-These help verify model reliability and detect any class imbalance issues.
-
----
-
-## 🧱 Tech Stack
-- Python 3.12  
-- pandas, numpy  
-- scikit-learn  
-- imblearn  
-- xgboost  
-- matplotlib, seaborn  
-- joblib  
+> *Indices refer to the transformed feature vector (one-hot columns expand the original set).*
 
 ---
 
-## 🚀 Key Takeaways
-- Feature extraction from text titles is critical for distinguishing seniority.
-- Combining BorderlineSMOTE with XGBoost yields high accuracy and robustness.
-- The pipeline structure allows seamless deployment and future updates.
-- Model generalizes well across different roles and industries.
+## Visualisations
+
+All plots are stored in `plots/` and automatically generated by the notebook.
+
+| Plot | Description | File |
+|------|-------------|------|
+| **Precision / Recall / F1 per class** | Bar chart showing the three metrics for each seniority class. | `plots/PRF.png` |
+| **Confusion matrix** | Heat-map of true vs. predicted labels. | `plots/confusionMatrix.png` |
+| **Company-size distribution** | Horizontal bar chart of the five company-size buckets (number of job posts). | `plots/companySize.png` |
+| **Top-10 provinces by job posts** | Vertical bar chart of the provinces with the most postings. | `plots/jobPosts.png` |
+
+![Precision / Recall / F1 per class](plots/PRF.png)
+
+![Confusion matrix](plots/confusionMatrix.png)
+
+![Company-size distribution](plots/companySize.png)
+
+![Top-10 provinces](plots/jobPosts.png)
 
 ---
+
+## Prediction Example
+
+```python
+pipeline.predict(pd.DataFrame([{
+    "Title": "Senior Back-End Engineer",
+    "YearsOfExperience": 8,
+    "AvgSalary": 120000,
+    "CompanySize": "51 - 200 employees",
+    "Province": "Tehran",
+    ...
+}]))   # → 'Senior'
+```
+
+---
+
+## Tech Stack
+
+| Library | Purpose |
+|---------|---------|
+| `pandas`, `numpy` | Data wrangling |
+| `scikit-learn` | Pipelines, preprocessing, metrics |
+| `imblearn` | BorderlineSMOTE |
+| `xgboost` | Gradient-boosting classifier |
+| `matplotlib`, `seaborn` | Static plots |
+| `joblib` | Model persistence |
+
+---
+
+## How to Run
+
+```bash
+git clone <repo-url>
+cd developer-seniority-prediction
+pip install -r requirements.txt
+jupyter notebook Developer_Seniority_Prediction.ipynb
+```
+
+*The notebook will*:
+
+1. Load `developers.csv`  
+2. Build & train the full pipeline  
+3. Save the model (`model.joblib`)  
+4. Export the four plots to `plots/`  
+
+---
+
+## Key Takeaways
+
+* **Title parsing** is the strongest signal for seniority.  
+* **BorderlineSMOTE + XGBoost** delivers > 99 % accuracy while preserving minority-class recall.  
+* The **pipeline is fully serialisable** (`joblib`) – ready for API / Streamlit deployment.  
