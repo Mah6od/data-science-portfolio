@@ -135,13 +135,3 @@ These help verify model reliability and detect any class imbalance issues.
 - Model generalizes well across different roles and industries.
 
 ---
-
-## 📁 File Structure
-├── developers.csv
-├── seniority_model.py
-├── best_seniority_pipeline.joblib
-├── README.md
-└── plots/
-├── confusion_matrix.png
-└── f1_scores.png
-
